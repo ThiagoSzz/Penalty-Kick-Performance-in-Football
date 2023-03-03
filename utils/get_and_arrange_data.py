@@ -1,17 +1,10 @@
 from bs4 import BeautifulSoup
-import os
-
-'''
-TODO:
-1. arrumar erro que ocorre ao unir os 2 datasets quando encontra uma batida perdida
-2. converter para json
-3. fazer para todos os jogadores
-'''
+import json
 
 # nome dos arquivos com o html
 jogadores = ['messi', 'cr7', 'benzema', 'mbappe']
 
-for jogador in jogadores[:1]:
+for jogador in jogadores:
     # arquivo html contendo as posições x, y e o id das batidas
     htmlfile = f'{jogador}.html'
     # arquivo html contendo informações sobre a partida
@@ -29,66 +22,30 @@ for jogador in jogadores[:1]:
     span = div.find_all('span')[1]
     valor = span.text
     valor1, valor2 = valor.split('/')
-
-    # visita as tags 'svg' e coleta x, y e id
-    # coloca em um dicionário e armazena na lista
-    i = 0
-    for svg in soup.find_all("svg"):
-        x = float(svg.get("x", "0"))
-        y = float(svg.get("y", "0"))
-
-        if (x == 0 and y == 0) or (x == 16 and y == 16):
-            pass
-        else:
-            if i <= int(valor1) and i != 0:
-                new_dict = dict()
-                new_dict['x'] = x
-                new_dict['y'] = y
-                new_dict['id'] = ''
-                classe = svg.get("class")[2]
-                new_dict['id'] = int(classe.split("actual-ball")[1])
-                new_dict['resultado'] = 'acertou'
-
-                batidas.append(new_dict)
-
-            i += 1
-
-    # faz o mesmo, porém nas tags 'circle'
-    i = 0
-    for circle in soup.find_all("circle"):
-        cx = float(circle.get("cx", "0"))
-        cy = float(circle.get("cy", "0"))
-
-        if cx == 8 and cy == 8:
-            pass
-        else:        
-            if i <= int(valor2)-int(valor1)+4 and i >= 5:
-                new_dict = dict()
-                new_dict['x'] = cx
-                new_dict['y'] = cy
-                new_dict['id'] = ''
-                classe = circle.get("class")[2]
-                new_dict['id'] = int(classe.split("actual-ball")[1])
-                new_dict['resultado'] = 'perdeu'
-
-                batidas.append(new_dict)
-
-            i += 1
-
-    # ordena baseado no id coletado
-    sorted_list = sorted(batidas, key=lambda x: int(x['id']), reverse=True)
     
-    # move valores 'inusitados' ao final da lista
-    bigger = list()
-    for i in range(len(sorted_list)):
-        if int(sorted_list[i]['id']) > 17000:
-            bigger.append(sorted_list[i])
-            
-    bigger = sorted(bigger, key=lambda x: int(x['id']))    
-    for i in bigger:
-        sorted_list.append(i)
-        sorted_list.pop(0)
-        
+    # visita as tags 'svg' e 'circle' e coleta x, y e id
+    # coloca em um dicionário e armazena na lista
+    for tag in soup.find_all(["svg", "circle"]):
+        if tag.has_attr("class") and any("virtual-ball" in c for c in tag["class"]):
+            ball_num = int([c.split("virtual-ball")[1] for c in tag["class"] if "virtual-ball" in c][0])
+
+            if tag.name == "svg":
+                x = float(tag.get("x", "0"))
+                y = float(tag.get("y", "0"))
+
+                if (x == 0 and y == 0) or (x == 16 and y == 16):
+                    pass
+                else:
+                    batidas.append({"id": ball_num, "partida": None, "placar": None, "data": None, "x": x, "y": y, "resultado": "acertou"})
+            elif tag.name == "circle":
+                cx = float(tag.get("cx", "0"))
+                cy = float(tag.get("cy", "0"))
+
+                if (cx == 8 and cy == 8):
+                    pass
+                else:
+                    batidas.append({"id": ball_num, "partida": None, "placar": None, "data": None, "x": cx, "y": cy, "resultado": "perdeu"})
+    
     # le arquivo contendo informações sobre a partida
     with open(htmlfile1, encoding="windows-1252") as f:
         soup = BeautifulSoup(f, "html.parser")
@@ -125,10 +82,12 @@ for jogador in jogadores[:1]:
         batidas[i] = new_dict
         i += 1
     
-    # imprime as informações mais relevantes  
-    print(jogador)
-    for i in sorted_list:
-        print(f'partida {i["partida"]}: {i["placar"]}')
-        print(f'penalti {i["id"]}: {i["resultado"]}')
-        print(f'x: {i["x"]}, y: {i["y"]}')
-        print()
+    # armazena algumas informações sobre o jogador ao final da lista
+    batidas.append({"jogador": f"{jogador}", "total de batidas": int(valor2), "batidas convertidas": int(valor1), "batidas perdidas": int(valor2)-int(valor1)})
+
+    # transforma em json e guarda no arquivo {jogador}.json
+    json_file = f'{jogador}.json'
+    with open(json_file, 'w', encoding='windows-1252') as f1:
+        json.dump(batidas, f1, indent=4, ensure_ascii=False)
+        
+    print(f'{jogador} OK')
