@@ -25,12 +25,12 @@
     },
     {
         "id": 26481,
-        "campeonato": null,
+        "campeonato": "Copa do Mundo de 2014",
         "partida": "Switzerland x France",
         "placar": "2-5",
         "data": "20/06/14",
-        "minutagem": null,
-        "goleiro": null,
+        "minutagem": "32",
+        "goleiro": "Diego Benaglio",
         "x": 172.606,
         "y": 134.0312,
         "resultado": "perdeu"
